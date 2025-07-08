@@ -1,5 +1,10 @@
 <?xml version="1.0" encoding="utf-8"?>
 <resources>
+    <color name="navyBlue">#0D138C</color>
+    <color name="blueBack">#010A26</color>
+    <color name="middleBlue">#023373</color>
+    <color name="softWhite">#D0E2F2</color>
+    <color name="softBlue">#0477BF</color>
     <color name="black">#FF000000</color>
     <color name="white">#FFFFFFFF</color>
 </resources>
