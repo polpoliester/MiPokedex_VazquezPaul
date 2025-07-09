@@ -1,23 +1,34 @@
 package vazquez.paul.mipokedex_vazquezpaul
 
+import android.content.Context
 import android.content.Intent
+import android.graphics.BitmapFactory
 import android.net.Uri
 import android.os.Bundle
-import android.util.Log
-import android.widget.Button
+import android.view.LayoutInflater
+import android.view.View
+import android.view.ViewGroup
+import android.widget.BaseAdapter
+import android.widget.ImageView
+import android.widget.TextView
 import androidx.activity.enableEdgeToEdge
 import androidx.appcompat.app.AppCompatActivity
 import androidx.core.view.ViewCompat
 import androidx.core.view.WindowInsetsCompat
-import com.cloudinary.android.MediaManager
-import com.cloudinary.android.callback.ErrorInfo
-import com.cloudinary.android.callback.UploadCallback
+import com.bumptech.glide.Glide
+import com.cloudinary.Url
+import com.google.firebase.database.ChildEventListener
+import com.google.firebase.database.DataSnapshot
+import com.google.firebase.database.DatabaseError
+import com.google.firebase.database.FirebaseDatabase
+import com.google.firebase.FirebaseApp
+import vazquez.paul.mipokedex_vazquezpaul.databinding.ActivityMainBinding
+import java.net.URL
 
 class MainActivity : AppCompatActivity() {
-    val CLOUD_NAME = "dluszraa2"
-    val UPLOAD_PRESET = "pokemon-upload"
-    //Nulo hasta que se selccione una imagen
-    var imageUri: Uri?= null
+    private lateinit var binding: ActivityMainBinding
+    private val pokemones = FirebaseDatabase.getInstance().getReference("pokemones/")
+    private val lista = ArrayList<Pokemon>()
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
@@ -29,47 +40,63 @@ class MainActivity : AppCompatActivity() {
             insets
         }
 
-        val btnRegister: Button = findViewById(R.id.addButton)
-        btnRegister.setOnClickListener {
+        binding = ActivityMainBinding.inflate(layoutInflater)
+        setContentView(binding.root)
+
+        val adapter = PokemonAdapter(this, lista)
+        binding.pokemones.adapter = adapter
+
+        binding.addButton.setOnClickListener {
             val intent: Intent = Intent(this, AddPokemonActivity::class.java)
             startActivity(intent)
         }
 
+        pokemones.addChildEventListener(object : ChildEventListener {
+            override fun onChildAdded(snapshot: DataSnapshot, previousChildName: String?) {
+                val pokemon = snapshot.getValue(Pokemon::class.java)
+                if (pokemon != null) {
+                    lista.add(pokemon)
+                    adapter.notifyDataSetChanged()
+                }
+            }
+
+            override fun onChildChanged(snapshot: DataSnapshot, previousChildName: String?) {}
+            override fun onChildRemoved(snapshot: DataSnapshot) {}
+            override fun onChildMoved(snapshot: DataSnapshot, previousChildName: String?) {}
+            override fun onCancelled(error: DatabaseError) {}
+        })
     }
 
-    //Inicializar Cloudinary
-    private fun initCloudinary() {
-        val config: MutableMap<String, String> = HashMap<String, String>()
-        config["cloud_name"] = CLOUD_NAME
-        MediaManager.init(this, config)
-    }
+    inner class PokemonAdapter(val context: Context, val pokemones: ArrayList<Pokemon>): BaseAdapter() {
+        override fun getCount(): Int {
+            return pokemones.size
+        }
 
-    fun uploadPokemon(): String{
-        var url: String = ""
-        if(imageUri != null) {
-            MediaManager.get().upload(imageUri).unsigned(UPLOAD_PRESET).callback(object :
-                UploadCallback {
-                override fun onStart(requestId: String?) {
-                    Log.d("Start", "Upload start")
-                }
+        override fun getItem(position: Int): Any {
+            return pokemones[position]
+        }
 
-                override fun onProgress(requestId: String?, bytes: Long, totalBytes: Long) {
-                    Log.d("Progress", "On progress")
-                }
+        override fun getItemId(position: Int): Long {
+            return position.toLong()
+        }
 
-                override fun onSuccess(requestId: String?, resultData: MutableMap<Any?, Any?>?) {
-                    url = resultData?.get["url"] as String
-                }
+        override fun getView(position: Int, convertView: View?, parent: ViewGroup?): View {
+            val registroPokemon = LayoutInflater.from(context).inflate(R.layout.pokemon, null)
+            val tvNombre = registroPokemon.findViewById<TextView>(R.id.tvNombrePokemon)
+            val tvNumero = registroPokemon.findViewById<TextView>(R.id.tvNumeroPokemon)
+            val ivPokemon = registroPokemon.findViewById<ImageView>(R.id.ivPokemon)
 
-                override fun onError(requestId: String?, error: ErrorInfo?) {
-                    TODO("Not yet implemented")
-                }
+            val pokemon = pokemones[position]
+            tvNombre.text = pokemon.nombre
+            tvNumero.text = "#${pokemon.numero}"
 
-                override fun onReschedule(requestId: String?, error: ErrorInfo?) {
-                    TODO("Not yet implemented")
-                }
+            Glide.with(registroPokemon)
+                .load(pokemon.url)
+                .centerInside()
+                .fitCenter()
+                .into(ivPokemon)
 
-            }).dispatch()
+            return registroPokemon
         }
     }
 
